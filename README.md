@@ -26,8 +26,7 @@ row.
 # from npm (once published)
 dsh plugin --profile web add dsh-superpowers
 
-# from a packed tarball (no build permission needed)
-pnpm pack
+# from a release tarball or a local `pnpm pack` (no build permission needed)
 dsh plugin --profile web add ./dsh-superpowers-0.1.0.tgz
 
 # from a local checkout, linked for development
@@ -61,6 +60,31 @@ Verify the layer without booting:
 ```sh
 dsh --profile web --dump-config | grep -A2 'dsh-superpowers'
 ```
+
+### Install from a release tarball
+
+Every published GitHub release attaches the built package archive
+(`dsh-superpowers-<version>.tgz`) plus a `SHA256SUMS` file. The archive is
+produced from the tagged commit by
+[`.github/workflows/release-tarball.yml`](.github/workflows/release-tarball.yml),
+so it contains the compiled `lib/` and needs no build permission:
+
+```sh
+# replace the version with the release you want (see the Releases page)
+curl -fLO https://github.com/douxc/dsh-superpowers/releases/latest/download/dsh-superpowers-0.1.0.tgz
+curl -fLO https://github.com/douxc/dsh-superpowers/releases/latest/download/SHA256SUMS
+sha256sum -c SHA256SUMS            # macOS: shasum -a 256 -c SHA256SUMS
+
+dsh plugin --profile web add ./dsh-superpowers-0.1.0.tgz
+```
+
+You can build the same archive locally from a checkout with
+`pnpm install && pnpm pack`.
+
+A tarball install is the offline/frozen alternative to a Git install: the file
+is already built, pins exactly one hashed artifact, and never asks for
+`allowBuilds` (that permission is only for Git installs that must run
+`prepare`).
 
 ## What it does
 

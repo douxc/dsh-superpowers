@@ -22,8 +22,7 @@
 # 从 npm 安装（发布后）
 dsh plugin --profile web add dsh-superpowers
 
-# 从打包好的 tarball 安装（无需允许构建脚本）
-pnpm pack
+# 从 release tarball 或本地 `pnpm pack` 安装（无需允许构建脚本）
 dsh plugin --profile web add ./dsh-superpowers-0.1.0.tgz
 
 # 从本地 checkout 链接安装（开发用）
@@ -55,6 +54,27 @@ key 里含 `#`，必须加引号。建议固定 commit
 ```sh
 dsh --profile web --dump-config | grep -A2 'dsh-superpowers'
 ```
+
+### 从 release tarball 安装
+
+每个发布的 GitHub Release 都会附带构建好的包归档
+（`dsh-superpowers-<version>.tgz`）和 `SHA256SUMS`。归档由
+[`.github/workflows/release-tarball.yml`](.github/workflows/release-tarball.yml)
+从对应 tag 的提交构建，已包含编译好的 `lib/`，**不需要任何构建权限**：
+
+```sh
+# 版本号换成你需要的 release（见 Releases 页面）
+curl -fLO https://github.com/douxc/dsh-superpowers/releases/latest/download/dsh-superpowers-0.1.0.tgz
+curl -fLO https://github.com/douxc/dsh-superpowers/releases/latest/download/SHA256SUMS
+sha256sum -c SHA256SUMS            # macOS: shasum -a 256 -c SHA256SUMS
+
+dsh plugin --profile web add ./dsh-superpowers-0.1.0.tgz
+```
+
+也可以在 checkout 里用 `pnpm install && pnpm pack` 生成同样的归档。
+
+tarball 安装是 Git 安装的离线/冻结替代：文件已构建、内容可用单个哈希固定、
+永远不会要求 `allowBuilds`（该权限只用于需要执行 `prepare` 的 Git 安装）。
 
 ## 工作方式
 

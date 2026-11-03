@@ -34,6 +34,7 @@
     "dsh": ">=0.2.1-rc.5 <0.3.0",
     "node": ">=20"
   },
+  "packageManager": "pnpm@11.28.5",
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "prepare": "npm run build",
