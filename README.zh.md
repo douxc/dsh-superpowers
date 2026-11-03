@@ -93,7 +93,7 @@ pnpm test          # 含离线 lock/内容校验测试
 ```
 
 提交前请 review 上游 `RELEASE-NOTES.md` 的差异，并在真实 DSH 会话里跑一次验收。
-对上游目录唯一新增的文件是 [`skills/using-superpowers/references/dsh-tools.md`](assets/dsh-tools.md)
+对上游目录唯一新增的文件是 [`skills/using-superpowers/references/dsh-tools.md`](skills/using-superpowers/references/dsh-tools.md)
 （DSH 工具映射）；不会修改任何上游 `SKILL.md`。
 
 ## 已知限制与待办

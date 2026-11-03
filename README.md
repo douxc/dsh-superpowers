@@ -103,7 +103,7 @@ pnpm test          # includes an offline lock/content verification test
 
 Review the upstream `RELEASE-NOTES.md` diff before committing, and run a real
 DSH session afterwards. The only file added to the upstream tree is
-[`skills/using-superpowers/references/dsh-tools.md`](assets/dsh-tools.md)
+[`skills/using-superpowers/references/dsh-tools.md`](skills/using-superpowers/references/dsh-tools.md)
 (the DSH tool mapping); no upstream `SKILL.md` is edited.
 
 ## Known Limitations and Deferred Work
