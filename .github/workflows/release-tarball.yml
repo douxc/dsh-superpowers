@@ -1,22 +1,32 @@
 name: release tarball
 
-# On every published GitHub release, build the package archive from the tagged
-# commit, verify its contents, and attach `dsh-superpowers-<version>.tgz` plus a
-# `SHA256SUMS` file to the release. The archive is the same one `npm publish`
-# would upload and is installable with:
-#   dsh plugin --profile web add ./dsh-superpowers-<version>.tgz
-# `workflow_dispatch` builds the archive without touching a release and keeps it
-# as a workflow artifact, for dry runs.
+# Build the installable package archive and attach it to a GitHub release.
+#
+# Triggers:
+#   * `release: published` — the normal path: build from the release tag and
+#     attach `dsh-superpowers-<version>.tgz` + `SHA256SUMS` to that release.
+#   * `workflow_dispatch` with a `tag` input — rebuild and re-attach the assets
+#     of an existing release (useful to retry a failed release run without
+#     deleting the release). Leave the input empty to only build a workflow
+#     artifact from the dispatch ref.
+#
+# The archive is the same package `npm publish` would upload, and is installed
+# with: dsh plugin --profile web add ./dsh-superpowers-<version>.tgz
 on:
   release:
     types: [published]
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing release tag to rebuild and attach assets to (e.g. v0.0.1). Empty = build an artifact only.'
+        required: false
+        type: string
 
 permissions:
   contents: write
 
 concurrency:
-  group: release-tarball-${{ github.event.release.tag_name || github.ref }}
+  group: release-tarball-${{ github.event.release.tag_name || github.event.inputs.tag || github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -24,10 +34,29 @@ jobs:
     name: Build and publish the tarball
     runs-on: ubuntu-latest
     steps:
-      - name: Check out the release tag
+      - name: Resolve the target ref
+        id: target
+        shell: bash
+        env:
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          FALLBACK_REF: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+          tag="${INPUT_TAG:-${RELEASE_TAG:-}}"
+          if [ -n "$tag" ]; then
+            ref="refs/tags/$tag"
+          else
+            ref="$FALLBACK_REF"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          echo "building $ref (attach tag: ${tag:-none})"
+
+      - name: Check out the target ref
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.release.tag_name || github.ref }}
+          ref: ${{ steps.target.outputs.ref }}
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
@@ -48,10 +77,10 @@ jobs:
       - name: Build and pack
         run: pnpm pack
 
-      - name: Verify the tag matches the package version
-        if: github.event_name == 'release'
+      - name: Verify the release tag matches the package version
+        if: steps.target.outputs.tag != ''
         env:
-          TAG: ${{ github.event.release.tag_name }}
+          TAG: ${{ steps.target.outputs.tag }}
         run: |
           pkg="$(node -p "require('./package.json').version")"
           tag="${TAG#v}"
@@ -76,14 +105,14 @@ jobs:
           cat SHA256SUMS
 
       - name: Attach the tarball to the GitHub release
-        if: github.event_name == 'release'
+        if: steps.target.outputs.tag != ''
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.event.release.tag_name }}
+          TAG: ${{ steps.target.outputs.tag }}
         run: gh release upload "$TAG" dsh-superpowers-*.tgz SHA256SUMS --clobber
 
-      - name: Keep the tarball as a workflow artifact (manual runs)
-        if: github.event_name == 'workflow_dispatch'
+      - name: Keep the tarball as a workflow artifact
+        if: steps.target.outputs.tag == ''
         uses: actions/upload-artifact@v4
         with:
           name: dsh-superpowers-tarball

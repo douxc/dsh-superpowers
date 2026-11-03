@@ -1,0 +1,8 @@
+# Single-package repository. pnpm >= 11 reads project settings from this file;
+# `packages` is intentionally absent because there is nothing to link.
+# Allow transitive dependencies to run their install/build scripts:
+#   esbuild — downloads/verifies its platform binary (used by vitest/vite)
+#   koffi    — native FFI helper pulled in by a DSH peer package
+allowBuilds:
+  esbuild: true
+  koffi: true
