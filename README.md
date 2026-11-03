@@ -33,9 +33,25 @@ dsh plugin --profile web add ./dsh-superpowers-0.1.0.tgz
 # from a local checkout, linked for development
 dsh plugin --profile web add /path/to/dsh-superpowers
 
-# from GitHub (requires allowing the package's `prepare` build script)
+# from GitHub (the first add is blocked until you allow the build)
 dsh plugin --profile web add github:douxc/dsh-superpowers
 ```
+
+A Git install fetches sources, so pnpm must run this package's `prepare` build
+(`tsc`). pnpm >= 10 refuses that until you allow it: the command above fails
+with `ERR_PNPM_GIT_DEP_PREPARE_NOT_ALLOWED` and prints the exact key. Add that
+key under `allowBuilds` in the profile's `pnpm-workspace.yaml`, then re-run the
+same command:
+
+```yaml
+allowBuilds:
+  'dsh-superpowers@git+ssh://git@github.com/douxc/dsh-superpowers.git#<commit>': true
+```
+
+The key contains `#`, so keep it quoted. Pin a commit
+(`github:douxc/dsh-superpowers#<sha>`) so later pushes cannot change the code
+that runs at install time, and only allow builds for packages you trust.
+Tarball and npm installs ship prebuilt `lib/` and need no build permission.
 
 `dsh plugin add` appends the bundle to the profile's `dsh.profile.bundles`
 automatically. Restart the app, then open a **new** session.

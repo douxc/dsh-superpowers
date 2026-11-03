@@ -29,9 +29,23 @@ dsh plugin --profile web add ./dsh-superpowers-0.1.0.tgz
 # 从本地 checkout 链接安装（开发用）
 dsh plugin --profile web add /path/to/dsh-superpowers
 
-# 从 GitHub 安装（需要允许包执行 prepare 构建脚本）
+# 从 GitHub 安装（首次 add 会被拦下，需要先允许构建）
 dsh plugin --profile web add github:douxc/dsh-superpowers
 ```
+
+Git 安装拿到的是源码，pnpm 需要执行本包的 `prepare` 构建（`tsc`）。pnpm >= 10
+默认禁止 git 依赖执行构建脚本：上面的命令会以
+`ERR_PNPM_GIT_DEP_PREPARE_NOT_ALLOWED` 失败并打印精确的 key。把该 key 加到
+profile 的 `pnpm-workspace.yaml` 的 `allowBuilds` 下，再重跑同一条命令：
+
+```yaml
+allowBuilds:
+  'dsh-superpowers@git+ssh://git@github.com/douxc/dsh-superpowers.git#<commit>': true
+```
+
+key 里含 `#`，必须加引号。建议固定 commit
+（`github:douxc/dsh-superpowers#<sha>`），避免后续 push 改变安装时执行的代码；
+只对可信包允许构建。tarball 与 npm 安装自带构建好的 `lib/`，不需要此许可。
 
 `dsh plugin add` 会自动把 bundle 追加进 profile 的 `dsh.profile.bundles`。
 重启应用后新开会话生效。
