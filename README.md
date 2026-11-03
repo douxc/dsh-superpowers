@@ -24,7 +24,7 @@ row.
 
 ```sh
 # from a release tarball or a local `pnpm pack` (no build permission needed)
-dsh plugin --profile web add ./dsh-superpowers-0.1.0.tgz
+dsh plugin --profile web add ./dsh-superpowers-0.0.1.tgz
 
 # from a local checkout, linked for development
 dsh plugin --profile web add /path/to/dsh-superpowers
@@ -68,11 +68,11 @@ so it contains the compiled `lib/` and needs no build permission:
 
 ```sh
 # replace the version with the release you want (see the Releases page)
-curl -fLO https://github.com/douxc/dsh-superpowers/releases/latest/download/dsh-superpowers-0.1.0.tgz
+curl -fLO https://github.com/douxc/dsh-superpowers/releases/latest/download/dsh-superpowers-0.0.1.tgz
 curl -fLO https://github.com/douxc/dsh-superpowers/releases/latest/download/SHA256SUMS
 sha256sum -c SHA256SUMS            # macOS: shasum -a 256 -c SHA256SUMS
 
-dsh plugin --profile web add ./dsh-superpowers-0.1.0.tgz
+dsh plugin --profile web add ./dsh-superpowers-0.0.1.tgz
 ```
 
 You can build the same archive locally from a checkout with

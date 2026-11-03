@@ -20,7 +20,7 @@
 
 ```sh
 # 从 release tarball 或本地 `pnpm pack` 安装（无需允许构建脚本）
-dsh plugin --profile web add ./dsh-superpowers-0.1.0.tgz
+dsh plugin --profile web add ./dsh-superpowers-0.0.1.tgz
 
 # 从本地 checkout 链接安装（开发用）
 dsh plugin --profile web add /path/to/dsh-superpowers
@@ -61,11 +61,11 @@ dsh --profile web --dump-config | grep -A2 'dsh-superpowers'
 
 ```sh
 # 版本号换成你需要的 release（见 Releases 页面）
-curl -fLO https://github.com/douxc/dsh-superpowers/releases/latest/download/dsh-superpowers-0.1.0.tgz
+curl -fLO https://github.com/douxc/dsh-superpowers/releases/latest/download/dsh-superpowers-0.0.1.tgz
 curl -fLO https://github.com/douxc/dsh-superpowers/releases/latest/download/SHA256SUMS
 sha256sum -c SHA256SUMS            # macOS: shasum -a 256 -c SHA256SUMS
 
-dsh plugin --profile web add ./dsh-superpowers-0.1.0.tgz
+dsh plugin --profile web add ./dsh-superpowers-0.0.1.tgz
 ```
 
 也可以在 checkout 里用 `pnpm install && pnpm pack` 生成同样的归档。
