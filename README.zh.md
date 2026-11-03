@@ -19,9 +19,6 @@
 ## 安装
 
 ```sh
-# 从 npm 安装（发布后）
-dsh plugin --profile web add dsh-superpowers
-
 # 从 release tarball 或本地 `pnpm pack` 安装（无需允许构建脚本）
 dsh plugin --profile web add ./dsh-superpowers-0.1.0.tgz
 
@@ -44,7 +41,7 @@ allowBuilds:
 
 key 里含 `#`，必须加引号。建议固定 commit
 （`github:douxc/dsh-superpowers#<sha>`），避免后续 push 改变安装时执行的代码；
-只对可信包允许构建。tarball 与 npm 安装自带构建好的 `lib/`，不需要此许可。
+只对可信包允许构建。tarball 安装自带构建好的 `lib/`，不需要此许可。
 
 `dsh plugin add` 会自动把 bundle 追加进 profile 的 `dsh.profile.bundles`。
 重启应用后新开会话生效。

@@ -23,9 +23,6 @@ row.
 ## Install
 
 ```sh
-# from npm (once published)
-dsh plugin --profile web add dsh-superpowers
-
 # from a release tarball or a local `pnpm pack` (no build permission needed)
 dsh plugin --profile web add ./dsh-superpowers-0.1.0.tgz
 
@@ -50,7 +47,7 @@ allowBuilds:
 The key contains `#`, so keep it quoted. Pin a commit
 (`github:douxc/dsh-superpowers#<sha>`) so later pushes cannot change the code
 that runs at install time, and only allow builds for packages you trust.
-Tarball and npm installs ship prebuilt `lib/` and need no build permission.
+Tarball installs ship prebuilt `lib/` and need no build permission.
 
 `dsh plugin add` appends the bundle to the profile's `dsh.profile.bundles`
 automatically. Restart the app, then open a **new** session.
@@ -154,8 +151,6 @@ DSH session afterwards. The only file added to the upstream tree is
 - Updating this package does not rewrite the bootstrap of an existing session;
   a session keeps the version it already saw until compaction clears it (then
   the current bundled version is re-injected).
-- No `.npmrc`/registry mirror is bundled; install from the default npm registry
-  or a tarball/Git source.
 - Skills are prompt content, not sandboxed code: read
   [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and review the vendored
   sources before enabling in a sensitive workspace.
