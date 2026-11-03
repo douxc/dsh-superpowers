@@ -1,0 +1,5 @@
+# dsh-superpowers bundle layer.
+# Registers the plugin row (skills + per-session bootstrap injection).
+- insert:
+    - id: superpowers
+      name: dsh-superpowers
