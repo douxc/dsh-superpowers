@@ -93,11 +93,21 @@ jobs:
         run: |
           set -euo pipefail
           tgz="$(ls dsh-superpowers-*.tgz)"
+          # Read the archive listing to a file first. Piping `tar -tzf` into
+          # `grep -q` makes grep exit on the first match and close the pipe;
+          # GNU tar then dies with "stdout: write error" (exit 2) and
+          # `set -o pipefail` turns that into a failed step.
+          listing="$(mktemp)"
+          trap 'rm -f "$listing"' EXIT
+          tar -tzf "$tgz" > "$listing"
           for path in package/package.json package/cordis.patch.yml package/lib/index.js \
                       package/skills/using-superpowers/SKILL.md package/upstream/superpowers.lock.json; do
-            tar -tzf "$tgz" | grep -qx "$path"
+            if ! grep -qx -- "$path" "$listing"; then
+              echo "missing $path in $tgz" >&2
+              exit 1
+            fi
           done
-          echo "verified $tgz"
+          echo "verified $tgz ($(wc -l < "$listing") files)"
 
       - name: Write checksums
         run: |
