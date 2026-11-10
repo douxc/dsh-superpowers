@@ -1,0 +1,194 @@
+name: upstream release
+
+# Watch the upstream Superpowers repository for a new stable release tag.
+# When one appears, vendor it, bump the plugin version, refresh the vendor
+# documentation, run the test suite, and push a reviewable pull request.
+#
+# The merge itself is a human decision: after this PR lands on main,
+# `release-on-version-bump.yml` creates the tag/release and triggers the
+# asset build. GITHUB_TOKEN-created pull requests run their CI in
+# approval-required state, so the PR body reminds the reviewer to approve the
+# workflow run (or merge on the tests recorded here if the repository does not
+# use that mechanism).
+on:
+  schedule:
+    - cron: '0 1 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Vendor the new upstream tag and run tests, but do not push a branch or open a PR.'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: upstream-release
+  cancel-in-progress: false
+
+jobs:
+  update:
+    name: Prepare the upstream update PR
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Find the latest stable upstream tag
+        id: upstream
+        run: |
+          set -euo pipefail
+          tags="$(git ls-remote --tags --refs https://github.com/obra/superpowers 'refs/tags/v*' \
+            | awk '{print $2}' | sed 's#^refs/tags/##')"
+          latest="$(pnpm exec tsx scripts/next-versions.ts latest-tag $tags)"
+          pinned="$(node -p "require('./upstream/superpowers.lock.json').version")"
+          newer="$(pnpm exec tsx scripts/next-versions.ts newer --candidate "$latest" --current "$pinned")"
+          {
+            echo "tag=$latest"
+            echo "version=${latest#v}"
+            echo "pinned=$pinned"
+            echo "proceed=$newer"
+          } >> "$GITHUB_OUTPUT"
+          echo "latest upstream tag: $latest; pinned: $pinned; update needed: $newer"
+
+      - name: Check out the upstream tag
+        if: steps.upstream.outputs.proceed == 'true'
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch "${{ steps.upstream.outputs.tag }}" \
+            https://github.com/obra/superpowers "$RUNNER_TEMP/superpowers"
+          git -C "$RUNNER_TEMP/superpowers" rev-parse HEAD > "$RUNNER_TEMP/upstream-commit"
+          echo "upstream commit: $(cat "$RUNNER_TEMP/upstream-commit")"
+
+      - name: Install dependencies
+        if: steps.upstream.outputs.proceed == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Vendor the upstream tag
+        if: steps.upstream.outputs.proceed == 'true'
+        run: pnpm run vendor:superpowers -- --from "$RUNNER_TEMP/superpowers"
+
+      - name: Bump the plugin version
+        id: version
+        if: steps.upstream.outputs.proceed == 'true'
+        run: |
+          set -euo pipefail
+          current="$(node -p "require('./package.json').version")"
+          next="$(pnpm exec tsx scripts/next-versions.ts formal --current "$current")"
+          node -e "const fs = require('fs'); const p = JSON.parse(fs.readFileSync('package.json', 'utf8')); p.version = process.argv[1]; fs.writeFileSync('package.json', JSON.stringify(p, null, 2) + '\n')" "$next"
+          echo "version=$next" >> "$GITHUB_OUTPUT"
+          echo "plugin version: $current -> $next"
+
+      - name: Sync the vendor references
+        if: steps.upstream.outputs.proceed == 'true'
+        run: pnpm run sync:vendor-docs
+
+      - name: Run the test suite
+        if: steps.upstream.outputs.proceed == 'true'
+        run: pnpm test
+
+      - name: Commit the update on a branch
+        id: branch
+        if: steps.upstream.outputs.proceed == 'true'
+        env:
+          TAG: ${{ steps.upstream.outputs.tag }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          branch="upstream/superpowers-${TAG}"
+          git checkout -b "$branch"
+          git add -A
+          git commit -m "chore: update superpowers to ${TAG}"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+          echo "title=chore: update superpowers to ${TAG}" >> "$GITHUB_OUTPUT"
+          echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          git show --stat --format= HEAD
+
+      - name: Build the pull request body
+        if: steps.upstream.outputs.proceed == 'true'
+        env:
+          TAG: ${{ steps.upstream.outputs.tag }}
+          UPSTREAM_VERSION: ${{ steps.upstream.outputs.version }}
+          PLUGIN_VERSION: ${{ steps.version.outputs.version }}
+          UPSTREAM_COMMIT: ${{ steps.branch.outputs.commit }}
+          BRANCH: ${{ steps.branch.outputs.branch }}
+        run: |
+          set -euo pipefail
+          {
+            echo "## Upstream Superpowers ${TAG}"
+            echo
+            echo "- Upstream tag: \`${TAG}\`"
+            echo "- Upstream version: \`${UPSTREAM_VERSION}\`"
+            echo "- Plugin version after merge: \`${PLUGIN_VERSION}\`"
+            echo "- Branch: \`${BRANCH}\`"
+            echo
+            echo "## Upstream release notes"
+            echo
+            sed -n "/^## ${TAG}/,/^## v/p" "$RUNNER_TEMP/superpowers/RELEASE-NOTES.md" | sed '$d' || true
+            echo
+            echo "## Changed files"
+            echo
+            echo '```'
+            git show --stat --format= HEAD
+            echo '```'
+            echo
+            echo "## Skills changed"
+            echo
+            echo '```'
+            git show --name-status --format= HEAD -- skills | head -80
+            echo '```'
+            echo
+            echo "## Review checklist"
+            echo
+            echo "- [ ] Review added/removed skills and frontmatter changes above"
+            echo "- [ ] Confirm the DSH tool mapping still covers any new action vocabulary"
+            echo "- [ ] If GitHub shows an approval banner, approve workflows to run"
+            echo "- [ ] Merge; the release tag and assets are created automatically afterwards"
+            echo
+            echo "The full \`pnpm test\` suite passed in this workflow run. The upstream"
+            echo "commit is recorded in \`upstream/superpowers.lock.json\`."
+          } > "$RUNNER_TEMP/pr-body.md"
+          cat "$RUNNER_TEMP/pr-body.md"
+
+      - name: Push the update branch
+        if: steps.upstream.outputs.proceed == 'true' && github.event.inputs.dry_run != 'true'
+        env:
+          BRANCH: ${{ steps.branch.outputs.branch }}
+        run: git push --force origin "HEAD:refs/heads/${BRANCH}"
+
+      - name: Open or reuse the pull request
+        if: steps.upstream.outputs.proceed == 'true' && github.event.inputs.dry_run != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ steps.branch.outputs.branch }}
+          TITLE: ${{ steps.branch.outputs.title }}
+        run: |
+          set -euo pipefail
+          existing="$(gh pr list --head "$BRANCH" --json number -q '.[0].number')"
+          if [ -n "$existing" ] && [ "$existing" != "null" ]; then
+            echo "pull request #$existing already exists for $BRANCH"
+          else
+            gh pr create --base main --head "$BRANCH" --title "$TITLE" --body-file "$RUNNER_TEMP/pr-body.md"
+          fi
+
+      - name: Report a dry run
+        if: steps.upstream.outputs.proceed == 'true' && github.event.inputs.dry_run == 'true'
+        run: |
+          echo "dry run: vendored ${{ steps.upstream.outputs.tag }}, tests passed, branch/PR not pushed"
+          git show --stat --format= HEAD

@@ -98,3 +98,44 @@ describe('nightly workflow', () => {
     expect(runs).toContain('refs/tags/nightly')
   })
 })
+
+describe('upstream-release workflow', () => {
+  const workflow = loadWorkflow('upstream-release.yml')
+
+  it('checks daily with a dry-run switch', () => {
+    const schedule = workflow.on?.schedule as { cron?: string }[] | undefined
+    expect(schedule?.[0]?.cron).toBe('0 1 * * *')
+    const dispatch = workflow.on?.workflow_dispatch as
+      | { inputs?: Record<string, { type?: string }> }
+      | undefined
+    expect(dispatch?.inputs?.dry_run?.type).toBe('boolean')
+  })
+
+  it('can open pull requests', () => {
+    expect(workflow.permissions?.contents).toBe('write')
+    expect(workflow.permissions?.['pull-requests']).toBe('write')
+    expect(workflow.concurrency?.group).toBe('upstream-release')
+  })
+
+  it('vendors the new tag and opens a reviewable PR', () => {
+    const runs = shell(workflow)
+    for (const command of [
+      'ls-remote --tags',
+      'next-versions.ts latest-tag',
+      'next-versions.ts newer',
+      'vendor:superpowers',
+      'sync:vendor-docs',
+      'pnpm test',
+      'gh pr create',
+      'upstream/superpowers-',
+      'RELEASE-NOTES.md',
+    ]) {
+      expect(runs, `workflow must contain ${command}`).toContain(command)
+    }
+  })
+
+  it('does not push when dry_run is requested', () => {
+    const steps = firstJobSteps(workflow)
+    expect(steps.some((step) => step.if?.includes("dry_run != 'true'"))).toBe(true)
+  })
+})
