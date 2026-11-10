@@ -1,0 +1,117 @@
+name: release on version bump
+
+# When a merged upstream-update PR (or any other change) bumps
+# package.json.version on main, publish that version exactly once:
+#
+#   tag v<version> -> GitHub release -> explicit dispatch of the asset build.
+#
+# The last step must be an explicit `workflow_dispatch`: events created with
+# GITHUB_TOKEN (including `release: published`) do not start new workflow runs,
+# while `workflow_dispatch` is a documented exception. The existing
+# release-tarball workflow then builds and attaches the tgz + SHA256SUMS.
+#
+# If a previous attempt created the tag but failed before the assets landed,
+# rerun this workflow manually (workflow_dispatch) after fixing the problem;
+# it is a no-op when the tag already exists. The asset build can also be
+# retried directly:
+#   gh workflow run release-tarball.yml --ref main -f tag=v<version>
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: release-on-version-bump
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Create the release and dispatch the asset build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+
+      - name: Read the package and upstream versions
+        id: version
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./package.json').version")"
+          upstream="$(node -p "require('./upstream/superpowers.lock.json').version")"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "upstream=$upstream" >> "$GITHUB_OUTPUT"
+          echo "package version is $version (superpowers $upstream)"
+
+      - name: Check whether the release tag already exists
+        id: tag
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          if git ls-remote --tags --refs origin "refs/tags/v${VERSION}" | grep -q .; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "tag v${VERSION} already exists; nothing to release"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "tag v${VERSION} is new; creating the release"
+          fi
+
+      - name: Create and push the release tag
+        if: steps.tag.outputs.exists == 'false'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "v${VERSION}" -m "dsh-superpowers v${VERSION}"
+          git push origin "refs/tags/v${VERSION}"
+
+      - name: Write the release notes
+        if: steps.tag.outputs.exists == 'false'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          UPSTREAM: ${{ steps.version.outputs.upstream }}
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/release-notes.md" <<EOF
+          # dsh-superpowers v${VERSION}
+
+          Superpowers content: v${UPSTREAM} (pinned in upstream/superpowers.lock.json).
+
+          Install the attached tarball:
+
+              dsh plugin --profile web add ./dsh-superpowers-${VERSION}.tgz
+
+          The assets are dsh-superpowers-${VERSION}.tgz and SHA256SUMS.
+          EOF
+          cat "$RUNNER_TEMP/release-notes.md"
+
+      - name: Create the GitHub release
+        if: steps.tag.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+          UPSTREAM: ${{ steps.version.outputs.upstream }}
+        run: |
+          gh release create "v${VERSION}" --verify-tag \
+            --title "v${VERSION} (superpowers v${UPSTREAM})" \
+            --notes-file "$RUNNER_TEMP/release-notes.md"
+
+      - name: Dispatch the asset build
+        if: steps.tag.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: gh workflow run release-tarball.yml --ref main -f tag=v${VERSION}
+
+      - name: Nothing to do
+        if: steps.tag.outputs.exists == 'true'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: echo "tag v${VERSION} already exists; release step skipped"

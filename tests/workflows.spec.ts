@@ -139,3 +139,53 @@ describe('upstream-release workflow', () => {
     expect(steps.some((step) => step.if?.includes("dry_run != 'true'"))).toBe(true)
   })
 })
+
+describe('release-on-version-bump workflow', () => {
+  const workflow = loadWorkflow('release-on-version-bump.yml')
+
+  it('runs for pushes to main', () => {
+    const push = workflow.on?.push as { branches?: string[] } | undefined
+    expect(push?.branches).toContain('main')
+  })
+
+  it('can create tags, releases and dispatch workflows', () => {
+    expect(workflow.permissions?.contents).toBe('write')
+    expect(workflow.permissions?.actions).toBe('write')
+    expect(workflow.concurrency?.group).toBe('release-on-version-bump')
+  })
+
+  it('is idempotent per version and publishes through an explicit dispatch', () => {
+    const runs = shell(workflow)
+    for (const command of [
+      'ls-remote --tags',
+      'git tag -a',
+      'git push origin',
+      'gh release create',
+      '--verify-tag',
+      'gh workflow run release-tarball.yml',
+      '-f tag=',
+    ]) {
+      expect(runs, `workflow must contain ${command}`).toContain(command)
+    }
+    const steps = firstJobSteps(workflow)
+    expect(steps.some((step) => step.if?.includes("steps.tag.outputs.exists == 'false'"))).toBe(true)
+  })
+})
+
+describe('release-tarball workflow', () => {
+  const workflow = loadWorkflow('release-tarball.yml')
+
+  it('can be dispatched for an existing release tag', () => {
+    const dispatch = workflow.on?.workflow_dispatch as
+      | { inputs?: Record<string, unknown> }
+      | undefined
+    expect(dispatch?.inputs).toHaveProperty('tag')
+  })
+
+  it('attaches the versioned tarball and checksums to that release', () => {
+    const runs = shell(workflow)
+    expect(runs).toContain('gh release upload')
+    expect(runs).toContain('--clobber')
+    expect(runs).toContain('SHA256SUMS')
+  })
+})
