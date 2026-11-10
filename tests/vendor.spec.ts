@@ -205,7 +205,11 @@ describe('packaging metadata', () => {
 
   it('discloses upstream provenance in THIRD_PARTY_NOTICES.md', () => {
     const notices = readFileSync(join(ROOT, 'THIRD_PARTY_NOTICES.md'), 'utf8')
-    expect(notices).toMatch(/Superpowers v7\.0\.1/)
+    expect(notices).toContain(`Superpowers v${lock.version}`)
+    expect(notices).toContain(`| Version | ${lock.version} (pinned) |`)
+    expect(notices).toContain(
+      `— ${LOCKED_SKILLS.length} skill directories, ${Object.keys(lock.files).length} files`,
+    )
     expect(notices).toMatch(/MIT/)
     expect(notices).toContain('https://github.com/obra/superpowers')
     expect(notices).toContain('upstream/LICENSE-superpowers')
