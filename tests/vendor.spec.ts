@@ -17,6 +17,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { parseSkillDocument } from '../src/skills.ts'
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const SKILLS_DIR = join(ROOT, 'skills')
@@ -26,25 +27,6 @@ const VERSION_PATH = join(UPSTREAM_DIR, 'superpowers-version.txt')
 const LICENSE_PATH = join(UPSTREAM_DIR, 'LICENSE-superpowers')
 const ADDED_TOOLS_PATH = join(SKILLS_DIR, 'using-superpowers', 'references', 'dsh-tools.md')
 const ADDED_TOOLS_SOURCE = join(ROOT, 'assets', 'dsh-tools.md')
-
-/** Upstream skill set at the pinned version; update deliberately when re-vendoring. */
-const EXPECTED_SKILLS = [
-  'brainstorming',
-  'diagnosing-superpowers',
-  'dispatching-parallel-agents',
-  'executing-plans',
-  'finishing-a-development-branch',
-  'receiving-code-review',
-  'requesting-code-review',
-  'subagent-driven-development',
-  'systematic-debugging',
-  'test-driven-development',
-  'using-git-worktrees',
-  'using-superpowers',
-  'verification-before-completion',
-  'writing-plans',
-  'writing-skills',
-]
 
 /** The only paths this repo is allowed to add on top of the upstream tree. */
 const ADDED_FILES = ['using-superpowers/references/dsh-tools.md']
@@ -62,6 +44,15 @@ interface VendorLock {
 }
 
 const lock = JSON.parse(readFileSync(LOCK_PATH, 'utf8')) as VendorLock
+
+/** Skill directories recorded in the lock, derived from the upstream file list. */
+const LOCKED_SKILLS = [
+  ...new Set(
+    Object.keys(lock.files)
+      .filter((rel) => /^[^/]+\/SKILL\.md$/.test(rel))
+      .map((rel) => rel.split('/')[0]!),
+  ),
+].sort()
 
 function sha256Hex(data: string | Buffer): string {
   return createHash('sha256').update(data).digest('hex')
@@ -99,21 +90,30 @@ function walkFiles(dir: string, relDir = ''): string[] {
 }
 
 describe('vendored Superpowers tree', () => {
-  it('contains exactly the 15 expected skill directories, each with a SKILL.md', () => {
+  it('contains every skill directory recorded in the lock, each loadable by the plugin', () => {
     const skillDirs = readdirSync(SKILLS_DIR, { withFileTypes: true })
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)
       .sort()
-    expect(skillDirs).toEqual(EXPECTED_SKILLS)
-    expect(skillDirs).toHaveLength(15)
+    expect(LOCKED_SKILLS.length).toBeGreaterThan(0)
+    expect(skillDirs).toEqual(LOCKED_SKILLS)
 
-    for (const skill of EXPECTED_SKILLS) {
+    for (const skill of LOCKED_SKILLS) {
+      expect(skill, `${skill} must be a kebab-case skill directory`).toMatch(
+        /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+      )
       const skillFile = join(SKILLS_DIR, skill, 'SKILL.md')
       const content = readFileSync(skillFile, 'utf8')
       expect(content.length, `${skill}/SKILL.md must not be empty`).toBeGreaterThan(0)
       expect(content, `${skill}/SKILL.md must have YAML frontmatter`).toMatch(/^---\n/)
-      expect(content).toMatch(/\nname:\s*\S+/)
-      expect(content).toMatch(/\ndescription:\s*\S+/)
+      // The plugin parses these files at startup; a parse failure here means the
+      // vendored tree would silently degrade at runtime.
+      const parsed = parseSkillDocument(content)
+      expect(parsed.frontmatter.name, `${skill} frontmatter name must match the directory`).toBe(
+        skill,
+      )
+      expect(parsed.frontmatter.description?.length ?? 0).toBeGreaterThan(0)
+      expect(parsed.body.trim().length, `${skill} must have a body`).toBeGreaterThan(0)
     }
   })
 
@@ -133,8 +133,8 @@ describe('vendored Superpowers tree', () => {
     const actualFiles = walkFiles(SKILLS_DIR)
     const actualUpstream = actualFiles.filter((rel) => !addedSet.has(rel))
     expect(actualUpstream).toEqual(Object.keys(lock.files).sort())
-    expect(actualUpstream).toHaveLength(84)
-    expect(actualFiles).toHaveLength(85)
+    expect(actualUpstream).toHaveLength(Object.keys(lock.files).length)
+    expect(actualFiles).toHaveLength(Object.keys(lock.files).length + ADDED_FILES.length)
 
     for (const rel of actualUpstream) {
       const expected = lock.files[rel]
