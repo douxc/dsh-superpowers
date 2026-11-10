@@ -1,7 +1,7 @@
 # Nightly 构建与上游正式版发布（设计稿）
 
 日期：2026-11-10
-状态：待确认（v2：已做对抗性 grill，修订见 §10；v1 的 §4.2/§4.3/§4.4 以 §10 为准）
+状态：已实现（v2；实现记录见 §11）
 仓库：`douxc/dsh-superpowers`
 
 ## 1. 背景与意图
@@ -268,3 +268,36 @@ nightly 打包/升级行为、核对现有测试与脚本。以下按严重度�
 - **B** dispatch 失败时：默认「README 记录 fallback（内联构建）」，不默认实现；
   若你的仓库不允许 `actions: write`，实现时直接做内联版。
 - **C** nightly 历史：默认只保留最新（固定资产名 + 移动 tag），不留每日快照。
+
+## 11. 实现记录
+
+已按 §10 的 v2 方案落地（实现计划：`docs/superpowers/plans/2026-11-10-nightly-and-upstream-releases.md`）：
+
+| 类别 | 文件 |
+| --- | --- |
+| 版本计算 | `scripts/next-versions.ts`（formal / nightly / latest-tag / newer 子命令） |
+| 文档同步 | `scripts/sync-vendor-references.ts`（`--check` 可做 drift 门禁） |
+| Workflows | `.github/workflows/nightly.yml`、`upstream-release.yml`、`release-on-version-bump.yml` |
+| 测试 | `tests/versions.spec.ts`、`tests/docs-consistency.spec.ts`、`tests/workflows.spec.ts`；`tests/vendor.spec.ts` 改为 lock 驱动 |
+| 文档 | README 中英新增 Nightly / 发布流程章节；本设计稿与计划归档 |
+
+本地端到端模拟（临时 clone，未提交）：
+
+- formal：vendor 上游 **v7.0.2** → 插件 0.0.1→0.0.2 → 文档同步 → **85 tests 全绿** → 产出
+  `dsh-superpowers-0.0.2.tgz`；
+- nightly：`0.0.3-nightly.<date>.22f0b46` → 文档同步 → 85 tests 全绿 → 产出固定名
+  `dsh-superpowers-nightly.tgz` + `SHA256SUMS`，tarball 内含 `lib/index.js` 且版本号正确。
+
+上线后的第一次人工验证（需要仓库 Write 权限的 Actions）：
+
+1. Actions → **nightly** → Run workflow：检查 `nightly` Release 出现固定名资产与
+   `<!-- upstream-sha: … -->` marker；同日再跑一次应 skip。
+2. Actions → **upstream-release** → Run workflow，`dry_run = true`：应识别 v7.0.2 并完成
+   vendor/测试，只打印 diff，不 push。
+3. 再跑一次 `dry_run = false`：生成 `upstream/superpowers-v7.0.2` 分支与 PR；PR 上按提示
+   **Approve workflows to run**；合并后 `release-on-version-bump.yml` 创建 `v0.0.2` 并
+   dispatch 资产构建，Release 出现 `dsh-superpowers-0.0.2.tgz` + `SHA256SUMS`。
+
+已知限制：`push`/`release` 事件由 `GITHUB_TOKEN` 创建时不会触发新 workflow（`workflow_dispatch`
+例外），因此发版链路依赖显式 dispatch；如 dispatch 权限被仓库策略禁用，按设计稿 §10.2 #7 的
+fallback 在 release-on-version-bump 内联构建上传。
