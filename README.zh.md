@@ -41,6 +41,15 @@ dsh plugin --profile web add ./dsh-superpowers-0.0.1.tgz
 Agent 也可以自行完成安装与校验；含命令、检查项与故障处理的运行手册见
 [for_agent.md](for_agent.md)。
 
+直接复制下面这段给 Agent：
+
+```text
+帮我把 dsh-superpowers 安装到 DeepSeek Harness 的 "web" profile。
+按 https://github.com/douxc/dsh-superpowers/blob/main/for_agent.md 逐步执行：
+走离线的 release tarball，校验 SHA256SUMS 后安装，并检查组合后的 bundle 层。
+不要自行重启 DSH；就绪后告诉我什么时候重启，以及新会话里怎么验证。
+```
+
 重启 DeepSeek Harness，新会话即生效。
 
 ## 许可

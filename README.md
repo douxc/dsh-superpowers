@@ -43,6 +43,16 @@ with the new filename.
 An AI agent can run the install and verification itself; the runbook with
 commands, checks and failure modes is in [for_agent.md](for_agent.md).
 
+Copy this prompt to your agent:
+
+```text
+Install the dsh-superpowers plugin into my DeepSeek Harness "web" profile.
+Follow https://github.com/douxc/dsh-superpowers/blob/main/for_agent.md step by
+step: use the offline release tarball, verify its SHA256SUMS, install it, and
+check the composed bundle layer. Do not restart DSH yourself; when it is ready,
+tell me to restart it and how to verify it in a new session.
+```
+
 Restart DeepSeek Harness; the plugin is active in new sessions.
 
 ## License
