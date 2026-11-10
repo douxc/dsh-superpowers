@@ -8,7 +8,23 @@
 
 ## 安装
 
-从最新 Release 下载安装包与校验和，校验后安装到 DSH profile：
+### 在线（GitHub）
+
+直接从仓库安装：
+
+```sh
+dsh plugin --profile web add github:douxc/dsh-superpowers
+```
+
+首次安装会被拦下：pnpm 需要执行本包的构建脚本，必须先得到你的允许。它会打印
+需要添加的 `allowBuilds` 行——把它贴进 profile 的 `pnpm-workspace.yaml`，再执行
+同一条命令。
+
+更新时重新执行同一条命令即可；pnpm 会为新 commit 打印新的行，请一并替换。
+
+### 离线（release tarball）
+
+从 Release 下载安装包与校验和，校验后安装：
 
 ```sh
 curl -fLO https://github.com/douxc/dsh-superpowers/releases/latest/download/dsh-superpowers-0.0.1.tgz
@@ -17,6 +33,8 @@ sha256sum -c SHA256SUMS            # macOS: shasum -a 256 -c SHA256SUMS
 
 dsh plugin --profile web add ./dsh-superpowers-0.0.1.tgz
 ```
+
+更新时下载新版本的这两个文件，并用新文件名执行 `dsh plugin add`。
 
 重启 DeepSeek Harness，新会话即生效。
 

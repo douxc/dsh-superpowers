@@ -8,8 +8,24 @@ makes its skills available through DSH's native `skill` tool.
 
 ## Install
 
-Download the package and its checksum from the latest release, verify it, and
-install it into your DSH profile:
+### Online (GitHub)
+
+Install directly from the repository:
+
+```sh
+dsh plugin --profile web add github:douxc/dsh-superpowers
+```
+
+The first install is blocked: pnpm must run the package's build script and needs
+your permission. It prints the exact `allowBuilds` line — paste it into the
+profile's `pnpm-workspace.yaml`, then run the same command again.
+
+Update by running the same command again; pnpm prints a new line for the new
+commit, so refresh that line too.
+
+### Offline (release tarball)
+
+Download the package and its checksum from a release, verify them, then install:
 
 ```sh
 curl -fLO https://github.com/douxc/dsh-superpowers/releases/latest/download/dsh-superpowers-0.0.1.tgz
@@ -18,6 +34,9 @@ sha256sum -c SHA256SUMS            # macOS: shasum -a 256 -c SHA256SUMS
 
 dsh plugin --profile web add ./dsh-superpowers-0.0.1.tgz
 ```
+
+Update by downloading the newer release's files and running `dsh plugin add`
+with the new filename.
 
 Restart DeepSeek Harness; the plugin is active in new sessions.
 
