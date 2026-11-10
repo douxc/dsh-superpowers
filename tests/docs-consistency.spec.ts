@@ -40,10 +40,9 @@ describe('vendor documentation stays in sync with the lock', () => {
   })
 
   it.each(['README.md', 'README.zh.md'])(
-    '%s names the locked upstream version and the current package tarballs',
+    '%s references the current package tarball',
     (file) => {
       const text = read(file)
-      expect(text).toContain(`v${lock.version}`)
       const matches = text.match(/dsh-superpowers-\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?\.tgz/g) ?? []
       expect(matches.length, `${file} must show an installable tarball name`).toBeGreaterThan(0)
       expect(new Set(matches)).toEqual(new Set([tarball]))

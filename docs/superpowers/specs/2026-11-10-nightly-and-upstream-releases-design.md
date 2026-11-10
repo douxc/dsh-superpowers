@@ -197,7 +197,7 @@ nightly 打包/升级行为、核对现有测试与脚本。以下按严重度�
    README（`vendors ... v7.0.1`、`dsh-superpowers-0.0.1.tgz` 示例）是硬编码的；
    `vendor-superpowers.ts` 只打印提醒不更新。
    **修订**：新增 `scripts/sync-vendor-references.ts`：按新 lock 同步 notices 的
-   version/ref/tag/文件数、README 的上游版本与 tgz 示例文件名；nightly 在 worktree
+   version/ref/tag/文件数与 README 的 tgz 示例文件名（README 不写上游版本号）；nightly 在 worktree
    运行它后再测试（不提交）；formal PR 把它纳入提交；新增测试断言 notices/README 与
    lock 一致，漂移即红。
 6. **Nightly 升级 UX（实测）**：同路径替换 tgz 后
@@ -276,7 +276,7 @@ nightly 打包/升级行为、核对现有测试与脚本。以下按严重度�
 | 类别 | 文件 |
 | --- | --- |
 | 版本计算 | `scripts/next-versions.ts`（formal / nightly / latest-tag / newer 子命令） |
-| 文档同步 | `scripts/sync-vendor-references.ts`（`--check` 可做 drift 门禁） |
+| 文档同步 | `scripts/sync-vendor-references.ts`（notices 版本/ref/大小 + README tgz 文件名；`--check` 可做 drift 门禁） |
 | Workflows | `.github/workflows/nightly.yml`、`upstream-release.yml`、`release-on-version-bump.yml` |
 | 测试 | `tests/versions.spec.ts`、`tests/docs-consistency.spec.ts`、`tests/workflows.spec.ts`；`tests/vendor.spec.ts` 改为 lock 驱动 |
 | 文档 | README 中英新增 Nightly / 发布流程章节；本设计稿与计划归档 |

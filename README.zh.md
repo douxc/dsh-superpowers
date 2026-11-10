@@ -3,7 +3,7 @@
 [English](README.md) | 中文
 
 面向 **DeepSeek Harness（DSH）** 的 Superpowers 技能与每会话引导。
-本包内置 [Superpowers](https://github.com/obra/superpowers) v7.0.1 的技能，
+本包内置 [Superpowers](https://github.com/obra/superpowers) 的技能，
 并通过 DSH 原生的 `skill` 工具提供。
 
 ## 安装

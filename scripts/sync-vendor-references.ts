@@ -7,7 +7,7 @@
  * version/reference lines in:
  *
  * - `THIRD_PARTY_NOTICES.md` (upstream version, pinned ref/tag, payload size)
- * - `README.md` / `README.zh.md` (vendored upstream version, tarball example names)
+ * - `README.md` / `README.zh.md` (tarball example names)
  *
  * Usage:
  *   pnpm run sync:vendor-docs             # rewrite drifted references
@@ -116,14 +116,7 @@ export function renderUpdatedDocs(
         'the pinned commit and tag',
       )
     } else {
-      after = replaceOnce(
-        before,
-        /(\[Superpowers\]\(https:\/\/github\.com\/obra\/superpowers\) )v\d+\.\d+\.\d+/,
-        `$1v${lock.version}`,
-        path,
-        'the vendored upstream version',
-      )
-      after = replaceTarballNames(after, packageVersion, path)
+      after = replaceTarballNames(before, packageVersion, path)
     }
     return { path, before, after }
   })

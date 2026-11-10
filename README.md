@@ -3,8 +3,8 @@
 [English](README.md) | [中文](README.zh.md)
 
 Superpowers skills and per-session bootstrap for **DeepSeek Harness (DSH)**.
-This package bundles [Superpowers](https://github.com/obra/superpowers) v7.0.1
-and makes its skills available through DSH's native `skill` tool.
+This package bundles [Superpowers](https://github.com/obra/superpowers) and
+makes its skills available through DSH's native `skill` tool.
 
 ## Install
 
