@@ -152,6 +152,8 @@ function parseArgs(argv: string[]): { from: string; help: boolean } {
   let from = DEFAULT_FROM
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index]!
+    // `pnpm run <script> -- --from ...` forwards the separator as a literal argument.
+    if (arg === '--') continue
     if (arg === '--help' || arg === '-h') return { from, help: true }
     if (arg === '--from') {
       const value = argv[index + 1]
