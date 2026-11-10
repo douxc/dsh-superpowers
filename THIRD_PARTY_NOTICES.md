@@ -6,22 +6,22 @@ changes those terms.
 
 ## Superpowers
 
-Superpowers v7.0.1 is MIT-licensed and is redistributed as part of this package.
+Superpowers v7.0.2 is MIT-licensed and is redistributed as part of this package.
 
 | Item | Value |
 | --- | --- |
 | Project | Superpowers |
 | Upstream | <https://github.com/obra/superpowers> |
-| Version | 7.0.1 (pinned) |
+| Version | 7.0.2 (pinned) |
 | License | MIT |
 | Copyright | (c) 2025 Jesse Vincent |
 | License text | [`upstream/LICENSE-superpowers`](upstream/LICENSE-superpowers) |
-| Vendored tree | [`skills/`](skills/) — 15 skill directories, 84 files |
+| Vendored tree | [`skills/`](skills/) — 15 skill directories, 80 files |
 | Pin metadata | [`upstream/superpowers.lock.json`](upstream/superpowers.lock.json), [`upstream/superpowers-version.txt`](upstream/superpowers-version.txt) |
 
 The files under `skills/` are copied **byte-for-byte** from the pinned upstream commit
 recorded as `ref` in `upstream/superpowers.lock.json` (commit
-`2ce8aa15d05bd57213e6f746f953aafb7ded7a8b`, tag `v7.0.1`). No upstream file is modified
+`22f0b463e7a5e579904dd6211a520321035526f7`, tag `v7.0.2`). No upstream file is modified
 locally. The lock records a SHA-256 hash per file plus an aggregate hash, and
 `tests/vendor.spec.ts` recomputes both on every test run, so hand edits and stale vendor
 runs fail the test lane. Only `skills/` and the upstream `LICENSE` are redistributed; the
