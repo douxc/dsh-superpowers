@@ -1,0 +1,155 @@
+name: nightly
+
+# Build an installable package from the tip of upstream obra/superpowers main
+# every day and publish it as a moving `nightly` prerelease.
+#
+# Properties this workflow relies on:
+#   * upstream main unchanged since the last nightly -> skip (no churn);
+#   * publish only after the full test suite passes;
+#   * fixed asset names so the download URL is stable:
+#       releases/download/nightly/dsh-superpowers-nightly.tgz
+#   * the Release body carries `<!-- upstream-sha: <full sha> -->`, the
+#     skip marker for the next run.
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nightly
+  cancel-in-progress: false
+
+jobs:
+  nightly:
+    name: Build the nightly package
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Resolve upstream main
+        id: upstream
+        run: |
+          set -euo pipefail
+          git clone --depth 1 https://github.com/obra/superpowers "$RUNNER_TEMP/superpowers"
+          sha="$(git -C "$RUNNER_TEMP/superpowers" rev-parse HEAD)"
+          version="$(node -p "require('$RUNNER_TEMP/superpowers/package.json').version")"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "sha7=${sha:0:7}" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "upstream main is $sha (superpowers $version)"
+
+      - name: Read the last nightly build
+        id: last
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          body="$(gh release view nightly --json body -q .body 2>/dev/null || true)"
+          last="$(printf '%s\n' "$body" | sed -n 's/.*<!-- upstream-sha: \([0-9a-f]\{40\}\) -->.*/\1/p' | head -n 1)"
+          echo "sha=$last" >> "$GITHUB_OUTPUT"
+          if [ -n "$last" ]; then
+            echo "last nightly was built from $last"
+          else
+            echo "no previous nightly build found"
+          fi
+
+      - name: Decide whether to build
+        id: decide
+        env:
+          LAST_SHA: ${{ steps.last.outputs.sha }}
+          CURRENT_SHA: ${{ steps.upstream.outputs.sha }}
+        run: |
+          set -euo pipefail
+          if [ -n "$LAST_SHA" ] && [ "$LAST_SHA" = "$CURRENT_SHA" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "upstream main is unchanged ($CURRENT_SHA); skipping tonight's build"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install dependencies
+        if: steps.decide.outputs.skip != 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Set the nightly version
+        id: version
+        if: steps.decide.outputs.skip != 'true'
+        run: |
+          set -euo pipefail
+          current="$(node -p "require('./package.json').version")"
+          nightly="$(pnpm exec tsx scripts/next-versions.ts nightly \
+            --current "$current" --date "$(date -u +%Y%m%d)" --sha "${{ steps.upstream.outputs.sha7 }}")"
+          node -e "const fs = require('fs'); const p = JSON.parse(fs.readFileSync('package.json', 'utf8')); p.version = process.argv[1]; fs.writeFileSync('package.json', JSON.stringify(p, null, 2) + '\n')" "$nightly"
+          echo "version=$nightly" >> "$GITHUB_OUTPUT"
+          echo "nightly version is $nightly"
+
+      - name: Vendor upstream main
+        if: steps.decide.outputs.skip != 'true'
+        run: pnpm run vendor:superpowers -- --from "$RUNNER_TEMP/superpowers"
+
+      - name: Sync the vendor references
+        if: steps.decide.outputs.skip != 'true'
+        run: pnpm run sync:vendor-docs
+
+      - name: Run the test suite
+        if: steps.decide.outputs.skip != 'true'
+        run: pnpm test
+
+      - name: Pack the nightly tarball
+        if: steps.decide.outputs.skip != 'true'
+        run: |
+          set -euo pipefail
+          pnpm pack --pack-destination dist
+          packed="$(ls dist/dsh-superpowers-*.tgz)"
+          mv "$packed" dist/dsh-superpowers-nightly.tgz
+          (cd dist && sha256sum dsh-superpowers-nightly.tgz > SHA256SUMS)
+          cat dist/SHA256SUMS
+
+      - name: Publish the nightly release
+        if: steps.decide.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NIGHTLY_VERSION: ${{ steps.version.outputs.version }}
+          UPSTREAM_SHA: ${{ steps.upstream.outputs.sha }}
+          UPSTREAM_SHA7: ${{ steps.upstream.outputs.sha7 }}
+          UPSTREAM_VERSION: ${{ steps.upstream.outputs.version }}
+        run: |
+          set -euo pipefail
+          if ! gh release view nightly >/dev/null 2>&1; then
+            gh release create nightly --prerelease --title "nightly" --target "$GITHUB_SHA" \
+              --notes "Nightly builds of the Superpowers integration. This release is rebuilt from upstream main."
+          fi
+          gh release upload nightly dist/dsh-superpowers-nightly.tgz dist/SHA256SUMS --clobber
+          cat > "$RUNNER_TEMP/nightly-notes.md" <<EOF
+          # Nightly build
+
+          - Upstream Superpowers: main @ ${UPSTREAM_SHA} (package version ${UPSTREAM_VERSION})
+          - Plugin version: ${NIGHTLY_VERSION}
+          - Published: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+          <!-- upstream-sha: ${UPSTREAM_SHA} -->
+
+          This is an unreviewed snapshot of the upstream main branch. It is not
+          recommended for production use. Download dsh-superpowers-nightly.tgz
+          and verify it with SHA256SUMS.
+          EOF
+          gh release edit nightly --prerelease --title "nightly (main@${UPSTREAM_SHA7})" \
+            --notes-file "$RUNNER_TEMP/nightly-notes.md"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -f nightly "$GITHUB_SHA"
+          git push --force origin refs/tags/nightly
