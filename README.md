@@ -83,6 +83,49 @@ is already built, pins exactly one hashed artifact, and never asks for
 `allowBuilds` (that permission is only for Git installs that must run
 `prepare`).
 
+## Nightly builds
+
+A `nightly` prerelease is rebuilt every day at 08:00 Asia/Shanghai from the tip
+of the upstream `obra/superpowers` `main` branch. It is an unreviewed snapshot
+and is not recommended for production use.
+
+```sh
+curl -fLO https://github.com/douxc/dsh-superpowers/releases/download/nightly/dsh-superpowers-nightly.tgz
+curl -fLO https://github.com/douxc/dsh-superpowers/releases/download/nightly/SHA256SUMS
+sha256sum -c SHA256SUMS            # macOS: shasum -a 256 -c SHA256SUMS
+
+dsh plugin --profile web add ./dsh-superpowers-nightly.tgz
+```
+
+To move to a newer nightly, download the two files again and repeat the same
+`dsh plugin add` command. Do not run a plain `pnpm install --frozen-lockfile`
+in the profile after replacing the file: the lock records the integrity of the
+tarball you installed, so a swapped file fails that check by design. Re-running
+`dsh plugin add` refreshes the recorded integrity.
+
+## Release process
+
+- **Nightly** ([`nightly.yml`](.github/workflows/nightly.yml)): polls upstream
+  `main` daily; when the tip moved it vendors the snapshot, runs the full test
+  suite, and republishes the moving `nightly` prerelease under fixed asset
+  names. An unchanged tip is skipped.
+- **Formal release** ([`upstream-release.yml`](.github/workflows/upstream-release.yml)):
+  when upstream publishes a new stable tag, opens a pull request with the
+  vendored payload, a plugin patch-version bump, the upstream release notes and
+  the test result. Review and merge it. A `GITHUB_TOKEN`-created PR may show an
+  **Approve workflows to run** banner; approve it to get CI checks.
+- **Publishing** ([`release-on-version-bump.yml`](.github/workflows/release-on-version-bump.yml)):
+  once the merge lands on `main`, creates the `v<version>` tag and GitHub
+  release, then explicitly dispatches the asset build — GitHub does not start
+  workflows for events created by `GITHUB_TOKEN`, while `workflow_dispatch` is a
+  documented exception. [`release-tarball.yml`](.github/workflows/release-tarball.yml)
+  attaches the versioned tarball and `SHA256SUMS` to that release.
+- **Recovery**: if a release exists without assets, rerun the asset build:
+  `gh workflow run release-tarball.yml --ref main -f tag=v<version>`.
+
+Plugin versions are independent semver: formal releases bump the patch segment,
+and nightly builds use `<next>-nightly.<date>.<upstream-sha>`.
+
 ## What it does
 
 1. **Registers the 15 bundled skills** (`brainstorming`, `writing-plans`,

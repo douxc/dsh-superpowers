@@ -73,6 +73,45 @@ dsh plugin --profile web add ./dsh-superpowers-0.0.1.tgz
 tarball 安装是 Git 安装的离线/冻结替代：文件已构建、内容可用单个哈希固定、
 永远不会要求 `allowBuilds`（该权限只用于需要执行 `prepare` 的 Git 安装）。
 
+## Nightly 构建
+
+`nightly` 预发布每天北京时间 08:00 从上游 `obra/superpowers` 的 `main` 分支
+最新提交重建。它是未经审核的快照，不建议用于生产。
+
+```sh
+curl -fLO https://github.com/douxc/dsh-superpowers/releases/download/nightly/dsh-superpowers-nightly.tgz
+curl -fLO https://github.com/douxc/dsh-superpowers/releases/download/nightly/SHA256SUMS
+sha256sum -c SHA256SUMS            # macOS: shasum -a 256 -c SHA256SUMS
+
+dsh plugin --profile web add ./dsh-superpowers-nightly.tgz
+```
+
+升级到更新的 nightly：重新下载这两个文件，再执行同一条 `dsh plugin add`。
+替换文件后不要在 profile 里直接跑 `pnpm install --frozen-lockfile`——lock
+记录的是你安装的那个 tarball 的 integrity，换文件后该检查按设计会失败；
+重新执行 `dsh plugin add` 会刷新记录。
+
+## 发布流程
+
+- **Nightly**（[`nightly.yml`](.github/workflows/nightly.yml)）：每天检查上游
+  `main`；有新提交时 vendor 该快照、跑全量测试，并用固定资产名更新移动的
+  `nightly` 预发布；上游无变化则跳过。
+- **正式版**（[`upstream-release.yml`](.github/workflows/upstream-release.yml)）：
+  上游出现新的稳定 tag 时，自动开一个 PR（含 vendor 内容、插件 patch 版本号、
+  上游 release notes、测试结果）。Review 并合并。由 `GITHUB_TOKEN` 创建的 PR
+  可能显示 **Approve workflows to run** 横幅，点一下即可让 CI 跑起来。
+- **发布**（[`release-on-version-bump.yml`](.github/workflows/release-on-version-bump.yml)）：
+  合并进入 `main` 后，创建 `v<version>` tag 与 GitHub Release，然后显式 dispatch
+  资产构建——GitHub 不会为 `GITHUB_TOKEN` 创建的事件启动新 workflow，而
+  `workflow_dispatch` 是官方例外。最终由
+  [`release-tarball.yml`](.github/workflows/release-tarball.yml) 把带版本号的
+  tarball 与 `SHA256SUMS` 挂到该 Release。
+- **恢复**：若 Release 已存在但资产缺失，重新触发资产构建：
+  `gh workflow run release-tarball.yml --ref main -f tag=v<version>`。
+
+插件版本独立 semver：正式版 patch +1；nightly 使用
+`<下一个正式版>-nightly.<日期>.<上游 sha>`。
+
 ## 工作方式
 
 1. **注册 15 个内置技能**（`brainstorming`、`writing-plans`、
