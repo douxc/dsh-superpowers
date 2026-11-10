@@ -28,11 +28,11 @@ commit, so refresh that line too.
 Download the package and its checksum from a release, verify them, then install:
 
 ```sh
-curl -fLO https://github.com/douxc/dsh-superpowers/releases/latest/download/dsh-superpowers-0.0.1.tgz
+curl -fLO https://github.com/douxc/dsh-superpowers/releases/latest/download/dsh-superpowers-0.0.2.tgz
 curl -fLO https://github.com/douxc/dsh-superpowers/releases/latest/download/SHA256SUMS
 sha256sum -c SHA256SUMS            # macOS: shasum -a 256 -c SHA256SUMS
 
-dsh plugin --profile web add ./dsh-superpowers-0.0.1.tgz
+dsh plugin --profile web add ./dsh-superpowers-0.0.2.tgz
 ```
 
 Update by downloading the newer release's files and running `dsh plugin add`

@@ -27,11 +27,11 @@ dsh plugin --profile web add github:douxc/dsh-superpowers
 从 Release 下载安装包与校验和，校验后安装：
 
 ```sh
-curl -fLO https://github.com/douxc/dsh-superpowers/releases/latest/download/dsh-superpowers-0.0.1.tgz
+curl -fLO https://github.com/douxc/dsh-superpowers/releases/latest/download/dsh-superpowers-0.0.2.tgz
 curl -fLO https://github.com/douxc/dsh-superpowers/releases/latest/download/SHA256SUMS
 sha256sum -c SHA256SUMS            # macOS: shasum -a 256 -c SHA256SUMS
 
-dsh plugin --profile web add ./dsh-superpowers-0.0.1.tgz
+dsh plugin --profile web add ./dsh-superpowers-0.0.2.tgz
 ```
 
 更新时下载新版本的这两个文件，并用新文件名执行 `dsh plugin add`。
