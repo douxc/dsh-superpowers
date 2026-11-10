@@ -41,7 +41,8 @@
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "vendor:superpowers": "tsx scripts/vendor-superpowers.ts",
-    "verify:vendor": "vitest run tests/vendor.spec.ts"
+    "verify:vendor": "vitest run tests/vendor.spec.ts",
+    "sync:vendor-docs": "tsx scripts/sync-vendor-references.ts"
   },
   "keywords": [
     "dsh-plugin",
@@ -86,6 +87,7 @@
     "@types/node": "^22.15.0",
     "tsx": "^4.20.0",
     "typescript": "^5.8.0",
-    "vitest": "^3.2.0"
+    "vitest": "^3.2.0",
+    "yaml": "^2.9.1"
   }
 }
