@@ -134,6 +134,14 @@ describe('upstream-release workflow', () => {
     }
   })
 
+  it('installs dependencies before the first tsx helper runs', () => {
+    const runs = shell(workflow)
+    expect(runs.indexOf('pnpm install --frozen-lockfile')).toBeGreaterThanOrEqual(0)
+    expect(runs.indexOf('pnpm install --frozen-lockfile')).toBeLessThan(
+      runs.indexOf('next-versions.ts'),
+    )
+  })
+
   it('does not push when dry_run is requested', () => {
     const steps = firstJobSteps(workflow)
     expect(steps.some((step) => step.if?.includes("dry_run != 'true'"))).toBe(true)

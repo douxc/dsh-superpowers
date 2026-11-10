@@ -49,6 +49,11 @@ jobs:
           node-version: 22
           cache: pnpm
 
+      - name: Install dependencies
+        # Must precede the first `pnpm exec tsx` helper: a fresh runner has no
+        # node_modules yet and pnpm exec does not install missing binaries.
+        run: pnpm install --frozen-lockfile
+
       - name: Find the latest stable upstream tag
         id: upstream
         run: |
@@ -74,10 +79,6 @@ jobs:
             https://github.com/obra/superpowers "$RUNNER_TEMP/superpowers"
           git -C "$RUNNER_TEMP/superpowers" rev-parse HEAD > "$RUNNER_TEMP/upstream-commit"
           echo "upstream commit: $(cat "$RUNNER_TEMP/upstream-commit")"
-
-      - name: Install dependencies
-        if: steps.upstream.outputs.proceed == 'true'
-        run: pnpm install --frozen-lockfile
 
       - name: Vendor the upstream tag
         if: steps.upstream.outputs.proceed == 'true'
