@@ -36,6 +36,11 @@ dsh plugin --profile web add ./dsh-superpowers-0.0.1.tgz
 
 更新时下载新版本的这两个文件，并用新文件名执行 `dsh plugin add`。
 
+### 交给 Agent 安装
+
+Agent 也可以自行完成安装与校验；含命令、检查项与故障处理的运行手册见
+[for_agent.md](for_agent.md)。
+
 重启 DeepSeek Harness，新会话即生效。
 
 ## 许可

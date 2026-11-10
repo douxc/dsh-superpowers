@@ -38,6 +38,11 @@ dsh plugin --profile web add ./dsh-superpowers-0.0.1.tgz
 Update by downloading the newer release's files and running `dsh plugin add`
 with the new filename.
 
+### Use with an agent
+
+An AI agent can run the install and verification itself; the runbook with
+commands, checks and failure modes is in [for_agent.md](for_agent.md).
+
 Restart DeepSeek Harness; the plugin is active in new sessions.
 
 ## License

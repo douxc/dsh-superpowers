@@ -48,4 +48,17 @@ describe('vendor documentation stays in sync with the lock', () => {
       expect(new Set(matches)).toEqual(new Set([tarball]))
     },
   )
+
+  it('ships an agent runbook with install, verification and limits', () => {
+    const doc = read('for_agent.md')
+    for (const needle of [
+      'dsh plugin --profile web add',
+      '--dump-config',
+      'allowBuilds',
+      'releases/latest',
+      'restart',
+    ]) {
+      expect(doc, `for_agent.md must mention ${needle}`).toContain(needle)
+    }
+  })
 })
