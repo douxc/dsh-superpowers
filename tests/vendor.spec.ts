@@ -217,9 +217,15 @@ describe('packaging metadata', () => {
   })
 
   it('keeps the Chinese README paired with the English one', () => {
+    const enReadme = readFileSync(join(ROOT, 'README.md'), 'utf8')
     const zhReadme = readFileSync(join(ROOT, 'README.zh.md'), 'utf8')
+    expect(enReadme).toContain('[English](README.md) | [中文](README.zh.md)')
     expect(zhReadme).toContain('[English](README.md) | 中文')
-    for (const heading of ['安装', '工作方式', '已知限制与待办', '许可']) {
+    // The READMEs are intentionally short: what the project is, install, license.
+    for (const heading of ['Install', 'License']) {
+      expect(enReadme).toContain(`## ${heading}`)
+    }
+    for (const heading of ['安装', '许可']) {
       expect(zhReadme).toContain(`## ${heading}`)
     }
   })
